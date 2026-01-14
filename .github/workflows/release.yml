@@ -67,7 +67,7 @@ jobs:
       run: |
         set -euo pipefail
         prev_tag=$(gh release view --json tagName --jq '.tagName')
-        echo "TAG=$(($prev_tag + 2)) | tee -a $GITHUB_OUTPUT
+        echo "TAG=$(($prev_tag + 2))" | tee -a $GITHUB_OUTPUT
 
     - name: Publish Release
       env:
