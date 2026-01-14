@@ -62,6 +62,8 @@ jobs:
 
     - name: Set next tag
       id: tag-set
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         prev_tag=$(gh release view --json tagName --jq '.tagName')
