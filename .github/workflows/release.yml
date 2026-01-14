@@ -40,6 +40,9 @@ jobs:
   release:
     needs: [ build ]
     runs-on: ubuntu-latest
+    outputs:
+      TAG: ${{ steps.tag-set.outputs.TAG }}
+
     permissions:
       # write release
       contents: write
@@ -57,14 +60,21 @@ jobs:
       working-directory: artifacts
       run: for d in *; do tar czvf "$d.tgz" "$d"; done
 
+    - name: Set next tag
+      id: tag-set
+      run: |
+        set -euo pipefail
+        prev_tag=$(gh release view --json tagName --jq '.tagName')
+        echo "TAG=$(($prev_tag + 2)) | tee -a $GITHUB_OUTPUT
+
     - name: Publish Release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -euo pipefail
 
+        tag=${{ steps.tag-set.outputs.TAG }}
         prev_tag=$(gh release view --json tagName --jq '.tagName')
-        tag=$(($prev_tag + 1))
         sha=$(git rev-parse HEAD)
 
         echo "Publishing $prev_tag .. $tag: " artifacts/*tgz
@@ -122,9 +132,9 @@ jobs:
       run: |
         set -euo pipefail
 
+        tag=${{ needs.release.outputs.TAG }}
         # NOTE: will get the latest release tag, **not** pre-release tag
         prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
-        tag=$(( $prev_tag + 1))
 
         echo "Publishing $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
         gh release create "$tag" \
