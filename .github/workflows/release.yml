@@ -96,8 +96,9 @@ jobs:
     # Must have "contents:write" permissions to make a release in $RELEASE_TARGET_REPO
     environment: push-env
 
-    # GH_TOKEN doesn't need any permissions, we're only downloading releases
-    permissions: {}
+    permissions:
+      # Check out this private repo
+      contents: read
 
     steps:
       # We check out so we can provide CHANGELOG information
