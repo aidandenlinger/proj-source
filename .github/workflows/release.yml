@@ -75,7 +75,7 @@ jobs:
           "${gh_args[@]}" \
           artifacts/*tgz
 
-  release-cli-to-cubist-partners:
+  release-to-env:
     needs: [ release ]
     runs-on: ubuntu-latest
 
@@ -115,12 +115,12 @@ jobs:
         set -euo pipefail
 
         # NOTE: will get the latest release tag, **not** pre-release tag
-        prev_tag=$(gh release view --repo "$CLI_RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
+        prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
         tag=$(( $prev_tag + 1))
 
-        echo "Publishing $prev_tag .. $tag to $CLI_RELEASE_TARGET_REPO: " artifacts/*tgz
+        echo "Publishing $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
         gh release create "$tag" \
-          --repo "$CLI_RELEASE_TARGET_REPO" \
+          --repo "$RELEASE_TARGET_REPO" \
           "${gh_args[@]}" \
           artifacts/*tgz
 
