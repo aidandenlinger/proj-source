@@ -24,21 +24,21 @@ jobs:
       # Simulate uploading admin-, export-, and main- releases
       - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
         with:
-           name: export-${{ matrix.name }}
-           path: source.md
+          name: export-${{ matrix.name }}
+          path: source.md
 
       - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
         with:
-           name: admin-${{ matrix.name }}
-           path: source.md
+          name: admin-${{ matrix.name }}
+          path: source.md
 
       - uses: actions/upload-artifact@26f96dfa697d77e81fd5907df203aa23a56210a8 # v4
         with:
-           name: main-${{ matrix.name }}
-           path: source.md
+          name: main-${{ matrix.name }}
+          path: source.md
 
   release:
-    needs: [ build ]
+    needs: [build]
     runs-on: ubuntu-latest
     outputs:
       TAG: ${{ steps.tag-set.outputs.TAG }}
@@ -48,47 +48,47 @@ jobs:
       contents: write
 
     steps:
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      with:
-        fetch-depth: 0
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
-    - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
-      with:
-        path: artifacts
+      - uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
+        with:
+          path: artifacts
 
-    - name: Create Tarballs
-      working-directory: artifacts
-      run: for d in *; do tar czvf "$d.tgz" "$d"; done
+      - name: Create Tarballs
+        working-directory: artifacts
+        run: for d in *; do tar czvf "$d.tgz" "$d"; done
 
-    - name: Set next tag
-      id: tag-set
-      env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        set -euo pipefail
-        prev_tag=$(gh release view --json tagName --jq '.tagName')
-        echo "TAG=$(($prev_tag + 2))" | tee -a $GITHUB_OUTPUT
+      - name: Set next tag
+        id: tag-set
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          prev_tag=$(gh release view --json tagName --jq '.tagName')
+          echo "TAG=$(($prev_tag + 2))" | tee -a $GITHUB_OUTPUT
 
-    - name: Publish Release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        set -euo pipefail
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
 
-        tag=${{ steps.tag-set.outputs.TAG }}
-        prev_tag=$(gh release view --json tagName --jq '.tagName')
-        sha=$(git rev-parse HEAD)
+          tag=${{ steps.tag-set.outputs.TAG }}
+          prev_tag=$(gh release view --json tagName --jq '.tagName')
+          sha=$(git rev-parse HEAD)
 
-        echo "Publishing $prev_tag .. $tag: " artifacts/*tgz
-        gh release create "$tag" \
-          --target ${sha} \
-          --generate-notes \
-          --notes-start-tag "$prev_tag" \
-          "${gh_args[@]}" \
-          artifacts/*tgz
+          echo "Publishing $prev_tag .. $tag: " artifacts/*tgz
+          gh release create "$tag" \
+            --target ${sha} \
+            --generate-notes \
+            --notes-start-tag "$prev_tag" \
+            "${gh_args[@]}" \
+            artifacts/*tgz
 
   release-to-env:
-    needs: [ release ]
+    needs: [release]
     runs-on: ubuntu-latest
 
     # This environment should require manual approval
@@ -96,56 +96,48 @@ jobs:
     # Must have "contents:write" permissions to make a release in $RELEASE_TARGET_REPO
     environment: push-env
 
-    # GH_TOKEN doesn't need any permissions, we're only downloading artifacts
+    # GH_TOKEN doesn't need any permissions, we're only downloading releases
     permissions: {}
 
     steps:
-    # We check out so we can provide CHANGELOG information
-    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-      with:
-        fetch-depth: 0
-        # We do **not** want to persist credentials, as we want to operate
-        # on RELEASE_TARGET_REPO not our current repo
-        persist-credentials: false
+      # We check out so we can provide CHANGELOG information
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          # We do **not** want to persist credentials, as we want to operate
+          # on RELEASE_TARGET_REPO not our current repo
+          persist-credentials: false
 
-    # Explicitly download main and export artifacts. Intentionally does not include admin release.
-    - name: Download main release
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
-      with:
-        path: artifacts
+      # Explicitly download main and export artifacts. Intentionally does not include admin release.
+      - name: Download assets from release
+        env:
+          GH_TOKEN: ${{ github.token }}
         # CODESYNC(main-artifact-name)
-        pattern: main-*
-
-    - name: Download export
-      uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
-      with:
-        path: artifacts
         # CODESYNC(export-artifact-name)
-        pattern: export-*
+        run: |
+          gh release download \
+            ${{ needs.release.outputs.TAG }} \
+             --pattern 'main-*' --pattern 'export-*' \
+             --dir artifacts
 
-    - name: Create Tarballs
-      working-directory: artifacts
-      run: for d in *; do tar czvf "$d.tgz" "$d"; done
+      - name: Publish Release
+        env:
+          # operate on $RELEASE_REPO, not this repo
+          GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
+        run: |
+          set -euo pipefail
 
-    - name: Publish Release
-      env:
-        # operate on $RELEASE_REPO, not this repo
-        GH_TOKEN: ${{ secrets.RELEASE_GH_TOKEN }}
-      run: |
-        set -euo pipefail
+          tag=${{ needs.release.outputs.TAG }}
+          # NOTE: will get the latest release tag, **not** pre-release tag
+          prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
 
-        tag=${{ needs.release.outputs.TAG }}
-        # NOTE: will get the latest release tag, **not** pre-release tag
-        prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
+          echo "Publishing $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
+          gh release create "$tag" \
+            --repo "$RELEASE_TARGET_REPO" \
+            "${gh_args[@]}" \
+            artifacts/*tgz
 
-        echo "Publishing $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
-        gh release create "$tag" \
-          --repo "$RELEASE_TARGET_REPO" \
-          "${gh_args[@]}" \
-          artifacts/*tgz
-
-        # Give information to update changelog
-        echo "Commits since the last public release:"
-        git log "$prev_tag..$tag" --oneline
-        echo "${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag"
-
+          # Give information to update changelog
+          echo "Commits since the last public release:"
+          git log "$prev_tag..$tag" --oneline
+          echo "${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag"
