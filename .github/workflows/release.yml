@@ -141,6 +141,7 @@ jobs:
             --repo "$RELEASE_TARGET_REPO" \
             "${gh_args[@]}" \
             --notes "$changelog_template" \
+            --title "Test $tag" \
             --draft \
             artifacts/*tgz
 
