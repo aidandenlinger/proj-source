@@ -129,7 +129,7 @@ jobs:
           prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
 
           # Create a changelog for a developer to edit:
-          changelog_template="THIS IS A DRAFT RELEASE. EDIT THIS CHANGELOG AND RELEASE:\n\
+          printf -v changelog_template "THIS IS A DRAFT RELEASE. EDIT THIS CHANGELOG AND RELEASE:\n\
           full diff: ${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag\n\
           \n\
           $(git log "$prev_tag..$tag" --pretty=format:'- %s')"
@@ -142,4 +142,4 @@ jobs:
             --draft \
             artifacts/*tgz
 
-          echo "::notice:: Go to ${{github.server_url}}/$CLI_RELEASE_TARGET_REPO/releases to edit the changelog."
+          echo "::notice:: Go to ${{github.server_url}}/$RELEASE_TARGET_REPO/releases to edit the changelog."
