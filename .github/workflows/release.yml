@@ -96,10 +96,6 @@ jobs:
       # with "contents: write" to make a release in this repo
       RELEASE_TARGET_REPO: "aidandenlinger/proj-releases"
 
-    permissions:
-      # Check out this private repo
-      contents: read
-
     steps:
       # We check out so we can provide CHANGELOG information
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -137,12 +133,12 @@ jobs:
           $(git log "$prev_tag..$tag" --pretty=format:'- %s')"
 
           echo "Publishing draft release $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
-          gh release create "$tag" \
+          draft_url=$(gh release create "$tag" \
             --repo "$RELEASE_TARGET_REPO" \
             "${gh_args[@]}" \
             --notes "$changelog_template" \
             --title "Test $tag" \
             --draft \
-            artifacts/*tgz
+            artifacts/*tgz)
 
-          echo "::notice:: Go to ${{github.server_url}}/$RELEASE_TARGET_REPO/releases to edit the changelog."
+          echo "::notice:: Go to $draft_url to edit the changelog and release."
