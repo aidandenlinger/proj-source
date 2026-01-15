@@ -131,7 +131,9 @@ jobs:
           # Create a changelog for a developer to edit:
           printf -v changelog_template "THIS IS A DRAFT RELEASE. EDIT THIS CHANGELOG AND RELEASE:\n\
           full diff: ${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag\n\
-          \n\
+          # CHANGELOG $prev_tag..$tag\n\
+          ## What's Changed\n\
+          ### Project\n\
           $(git log "$prev_tag..$tag" --pretty=format:'- %s')"
 
           echo "Publishing draft release $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
