@@ -3,12 +3,6 @@ name: Publish Release
 on:
   workflow_dispatch:
 
-env:
-  # The repo to create a smaller release in
-  # `push_env` environment must define $RELEASE_GH_TOKEN
-  # with "contents: write" to make a release in this repo
-  RELEASE_TARGET_REPO: "aidandenlinger/proj-releases"
-
 jobs:
   build:
     permissions:
@@ -96,6 +90,12 @@ jobs:
     # Must have "contents:write" permissions to make a release in $RELEASE_TARGET_REPO
     environment: push-env
 
+    env:
+      # The repo to create a smaller release in
+      # `push_env` environment must define $RELEASE_GH_TOKEN
+      # with "contents: write" to make a release in this repo
+      RELEASE_TARGET_REPO: "aidandenlinger/proj-releases"
+
     permissions:
       # Check out this private repo
       contents: read
@@ -105,9 +105,6 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
-          # We do **not** want to persist credentials, as we want to operate
-          # on RELEASE_TARGET_REPO not our current repo
-          persist-credentials: false
 
       # Explicitly download main and export artifacts. Intentionally does not include admin release.
       - name: Download assets from release
@@ -129,16 +126,20 @@ jobs:
           set -euo pipefail
 
           tag=${{ needs.release.outputs.TAG }}
-          # NOTE: will get the latest release tag, **not** pre-release tag
           prev_tag=$(gh release view --repo "$RELEASE_TARGET_REPO" --json tagName --jq '.tagName')
 
-          echo "Publishing $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
+          # Create a changelog for a developer to edit:
+          changelog_template="THIS IS A DRAFT RELEASE. EDIT THIS CHANGELOG AND RELEASE:\n\
+          full diff: ${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag\n\
+          \n\
+          $(git log "$prev_tag..$tag" --pretty=format:'- %s')"
+
+          echo "Publishing draft release $prev_tag .. $tag to $RELEASE_TARGET_REPO: " artifacts/*tgz
           gh release create "$tag" \
             --repo "$RELEASE_TARGET_REPO" \
             "${gh_args[@]}" \
+            --notes "$changelog_template" \
+            --draft \
             artifacts/*tgz
 
-          # Give information to update changelog
-          echo "Commits since the last public release:"
-          git log "$prev_tag..$tag" --oneline
-          echo "${{ github.server_url }}/${{ github.repository }}/compare/$prev_tag..$tag"
+          echo "::notice:: Go to ${{github.server_url}}/$CLI_RELEASE_TARGET_REPO/releases to edit the changelog."
